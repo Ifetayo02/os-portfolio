@@ -4,10 +4,20 @@ import Project from "@/lib/Project";
 import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 
-export async function GET() {
-  await connectDB();
-  const projects = await Project.find().sort({ createdAt: -1 });
-  return NextResponse.json(projects);
+export async function GET(req) {
+  try {
+    await connectDB();
+    const { searchParams } = new URL(req.url);
+    const trash = searchParams.get("trash") === "true";
+
+    const projects = await Project.find({ deleted: trash }).sort({
+      createdAt: -1,
+    });
+    return NextResponse.json(projects);
+  } catch (err) {
+    console.error("GET /api/projects failed:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 export async function POST(req) {

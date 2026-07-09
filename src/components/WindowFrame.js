@@ -1,20 +1,43 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import { Rnd } from "react-rnd";
 import { motion } from "framer-motion";
 import { useWindowStore } from "@/store/useWindowStore";
-import { useState } from "react";
 import { useProjectStore } from "@/store/useProjectStore";
 
-export default function WindowFrame({ win }) {
+export default function WindowFrame({ win, isMobile }) {
   const closeWindow = useWindowStore((s) => s.closeWindow);
   const minimizeWindow = useWindowStore((s) => s.minimizeWindow);
   const focusWindow = useWindowStore((s) => s.focusWindow);
 
   if (win.minimized) return null;
 
+  if (isMobile) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        className="fixed inset-0 z-[9999] flex flex-col bg-neutral-900"
+      >
+        <div className="flex items-center justify-between px-4 py-3 bg-neutral-800 border-b border-white/10">
+          <span className="text-white text-sm font-medium truncate">{win.title}</span>
+          <button
+            onClick={() => closeWindow(win.id)}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 text-white text-sm"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-4 text-gray-200 text-sm">
+          <WindowContent win={win} />
+        </div>
+      </motion.div>
+    );
+  }
   return (
     <Rnd
+   
       default={{
         x: 100 + Math.random() * 100,
         y: 80 + Math.random() * 60,
@@ -77,54 +100,55 @@ function WindowContent({ win }) {
       return <LoginForm />;
     case "add-project":
       return <AddProjectForm />;
+      case "recycle-bin":
+  return <RecycleBin />;
+      case "explorer":
+  return <FileExplorer />;
+  case "edit-project":
+  return <EditProjectForm data={win.data} windowId={win.id} />;
     default:
       return <p>Empty window.</p>;
   }
 }
-
 function ProjectContent({ data }) {
+  const isAdmin = useProjectStore((s) => s.isAdmin);
+  const openWindow = useWindowStore((s) => s.openWindow);
+
   return (
     <div className="space-y-3">
       {data.imageUrl && (
-        <img
-          src={data.imageUrl}
-          alt={data.title}
-          className="w-full rounded-md"
-        />
+        <img src={data.imageUrl} alt={data.title} className="w-full rounded-md" />
       )}
       <p>{data.description}</p>
       {data.techStack && data.techStack.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {data.techStack.map((t) => (
-            <span
-              key={t}
-              className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded"
-            >
+            <span key={t} className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
               {t}
             </span>
           ))}
         </div>
       )}
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-3 pt-2 items-center">
         {data.liveUrl && (
-          <a
-            href={data.liveUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 underline text-xs"
-          >
+          <a href={data.liveUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline text-xs">
             Live Demo
           </a>
         )}
         {data.githubUrl && (
-          <a
-            href={data.githubUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 underline text-xs"
-          >
+          <a href={data.githubUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline text-xs">
             GitHub
           </a>
+        )}
+        {isAdmin && (
+          <button
+            onClick={() =>
+              openWindow(`edit-${data._id}`, `Edit: ${data.title}`, "edit-project", data)
+            }
+            className="text-xs text-white/60 hover:text-white ml-auto"
+          >
+            ✏️ Edit
+          </button>
         )}
       </div>
     </div>
@@ -134,7 +158,7 @@ function ProjectContent({ data }) {
 function AboutContent() {
   return (
     <p>
-      Hi, I'm Abdulqoyum — a Computer Science student and MERN stack
+      Hi, I'm Abdulqoyum,a Computer Science student and MERN stack
       developer. This OS is my portfolio, built with Next.js.
     </p>
   );
@@ -149,6 +173,63 @@ function TerminalContent() {
     </div>
   );
 }
+function RecycleBin() {
+  const trash = useProjectStore((s) => s.trash);
+  const fetchTrash = useProjectStore((s) => s.fetchTrash);
+  const restoreProject = useProjectStore((s) => s.restoreProject);
+  const permanentDeleteProject = useProjectStore((s) => s.permanentDeleteProject);
+  const isAdmin = useProjectStore((s) => s.isAdmin);
+
+useEffect(() => {
+  fetchTrash();
+}, []);
+
+  if (!isAdmin) {
+    return (
+      <p className="text-white/40 text-xs">
+        Only the admin can view deleted items.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-white/50 text-xs mb-3 font-mono">🗑️ Recycle Bin</p>
+      {trash.length === 0 && (
+        <p className="text-white/40 text-xs">Recycle bin is empty.</p>
+      )}
+      {trash.map((p) => (
+        <div
+          key={p._id}
+          className="flex items-center gap-3 px-2 py-2 rounded bg-white/5"
+        >
+          <span className="text-xl">{p.icon || "📁"}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm truncate">{p.title}</p>
+            <p className="text-white/40 text-xs">
+              Deleted {p.deletedAt ? new Date(p.deletedAt).toLocaleDateString() : ""}
+            </p>
+          </div>
+          <button
+            onClick={() => restoreProject(p._id)}
+            className="text-xs text-blue-400 hover:text-blue-300"
+          >
+            Restore
+          </button>
+          <button
+            onClick={() => {
+              if (confirm("Permanently delete this project? This cannot be undone."))
+                permanentDeleteProject(p._id);
+            }}
+            className="text-xs text-red-400 hover:text-red-300"
+          >
+            Delete Permanently
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function ContactContent() {
   return (
@@ -156,6 +237,36 @@ function ContactContent() {
       <p>Email: your@email.com</p>
       <p>LinkedIn: your-link-here</p>
       <p>GitHub: your-link-here</p>
+    </div>
+  );
+}
+function FileExplorer() {
+  const projects = useProjectStore((s) => s.projects);
+  const openWindow = useWindowStore((s) => s.openWindow);
+
+  return (
+    <div className="space-y-1">
+      <p className="text-white/50 text-xs mb-3 font-mono">~/projects</p>
+      {projects.length === 0 && (
+        <p className="text-white/40 text-xs">No projects yet.</p>
+      )}
+      {projects.map((p) => (
+        <button
+          key={p._id}
+          onDoubleClick={() =>
+            openWindow(p._id, p.title, "project", p)
+          }
+          className="w-full flex items-center gap-3 px-2 py-2 rounded hover:bg-white/10 text-left transition-colors"
+        >
+          <span className="text-xl">{p.icon || "📁"}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm truncate">{p.title}</p>
+            <p className="text-white/40 text-xs">
+              {new Date(p.createdAt).toLocaleDateString()}
+            </p>
+          </div>
+        </button>
+      ))}
     </div>
   );
 }
@@ -314,6 +425,73 @@ function AddProjectForm() {
       {status === "error" && (
         <p className="text-red-400 text-xs">Something went wrong.</p>
       )}
+    </form>
+  );
+}
+function EditProjectForm({ data, windowId }) {
+  const [form, setForm] = useState({
+    title: data.title || "",
+    description: data.description || "",
+    techStack: (data.techStack || []).join(", "),
+    imageUrl: data.imageUrl || "",
+    liveUrl: data.liveUrl || "",
+    githubUrl: data.githubUrl || "",
+    icon: data.icon || "📁",
+  });
+  const [status, setStatus] = useState("");
+  const fetchProjects = useProjectStore((s) => s.fetchProjects);
+  const closeWindow = useWindowStore((s) => s.closeWindow);
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("saving");
+
+    const res = await fetch(`/api/projects/${data._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        techStack: form.techStack.split(",").map((t) => t.trim()).filter(Boolean),
+      }),
+    });
+
+    if (res.ok) {
+      setStatus("done");
+      await fetchProjects();
+      setTimeout(() => closeWindow(windowId), 600);
+    } else {
+      setStatus("error");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this project permanently?")) return;
+    await fetch(`/api/projects/${data._id}`, { method: "DELETE" });
+    await fetchProjects();
+    closeWindow(windowId);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <input name="title" value={form.title} onChange={handleChange} className="w-full bg-neutral-800 text-white text-sm px-3 py-2 rounded border border-white/10 focus:outline-none focus:border-blue-500" />
+      <textarea name="description" value={form.description} onChange={handleChange} rows={3} className="w-full bg-neutral-800 text-white text-sm px-3 py-2 rounded border border-white/10 focus:outline-none focus:border-blue-500" />
+      <input name="techStack" value={form.techStack} onChange={handleChange} className="w-full bg-neutral-800 text-white text-sm px-3 py-2 rounded border border-white/10 focus:outline-none focus:border-blue-500" />
+      <input name="imageUrl" value={form.imageUrl} onChange={handleChange} className="w-full bg-neutral-800 text-white text-sm px-3 py-2 rounded border border-white/10 focus:outline-none focus:border-blue-500" />
+      <input name="liveUrl" value={form.liveUrl} onChange={handleChange} className="w-full bg-neutral-800 text-white text-sm px-3 py-2 rounded border border-white/10 focus:outline-none focus:border-blue-500" />
+      <input name="githubUrl" value={form.githubUrl} onChange={handleChange} className="w-full bg-neutral-800 text-white text-sm px-3 py-2 rounded border border-white/10 focus:outline-none focus:border-blue-500" />
+      <input name="icon" value={form.icon} onChange={handleChange} className="w-full bg-neutral-800 text-white text-sm px-3 py-2 rounded border border-white/10 focus:outline-none focus:border-blue-500" />
+      <div className="flex gap-2">
+        <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-sm py-2 rounded">
+          {status === "saving" ? "Saving..." : "Save Changes"}
+        </button>
+        <button type="button" onClick={handleDelete} className="bg-red-600 hover:bg-red-500 text-white text-sm px-3 rounded">
+          Delete
+        </button>
+      </div>
+      {status === "done" && <p className="text-green-400 text-xs">Saved!</p>}
+      {status === "error" && <p className="text-red-400 text-xs">Something went wrong.</p>}
     </form>
   );
 }

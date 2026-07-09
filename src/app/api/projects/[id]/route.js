@@ -22,11 +22,16 @@ export async function PUT(req, { params }) {
   return NextResponse.json(updated);
 }
 
+// Soft delete — moves to Recycle Bin
 export async function DELETE(req, { params }) {
   if (!(await checkAuth())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   await connectDB();
-  await Project.findByIdAndDelete(params.id);
-  return NextResponse.json({ success: true });
+  const updated = await Project.findByIdAndUpdate(
+    params.id,
+    { deleted: true, deletedAt: new Date() },
+    { new: true }
+  );
+  return NextResponse.json(updated);
 }

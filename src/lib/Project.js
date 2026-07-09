@@ -8,7 +8,9 @@ const ProjectSchema = new mongoose.Schema(
     imageUrl: { type: String, default: "" },
     liveUrl: { type: String, default: "" },
     githubUrl: { type: String, default: "" },
-    icon: { type: String, default: "📁" }, // emoji or icon name for desktop icon
+    icon: { type: String, default: "📁" },
+    deleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

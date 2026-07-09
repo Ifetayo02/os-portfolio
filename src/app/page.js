@@ -10,6 +10,7 @@ import { useProjectStore } from "@/store/useProjectStore";
 
 export default function Home() {
   const [booted, setBooted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const windows = useWindowStore((s) => s.windows);
   const fetchProjects = useProjectStore((s) => s.fetchProjects);
   const checkAuth = useProjectStore((s) => s.checkAuth);
@@ -18,6 +19,13 @@ export default function Home() {
     fetchProjects();
     checkAuth();
   }, [fetchProjects, checkAuth]);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   if (!booted) {
     return <BootScreen onComplete={() => setBooted(true)} />;
@@ -31,7 +39,7 @@ export default function Home() {
       <Desktop />
 
       {windows.map((win) => (
-        <WindowFrame key={win.id} win={win} />
+        <WindowFrame key={win.id} win={win} isMobile={isMobile} />
       ))}
 
       <Taskbar />

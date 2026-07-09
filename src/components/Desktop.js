@@ -8,11 +8,13 @@ export default function Desktop() {
   const projects = useProjectStore((s) => s.projects);
   const isAdmin = useProjectStore((s) => s.isAdmin);
 
-  const staticApps = [
-    { id: "about", title: "About Me", icon: "👤", type: "about" },
-    { id: "terminal", title: "Terminal", icon: "💻", type: "terminal" },
-    { id: "contact", title: "Contact", icon: "✉️", type: "contact" },
-  ];
+const staticApps = [
+  { id: "about", title: "About Me", icon: "👤", type: "about" },
+  { id: "explorer", title: "File Explorer", icon: "🗂️", type: "explorer" },
+  { id: "terminal", title: "Terminal", icon: "💻", type: "terminal" },
+  { id: "contact", title: "Contact", icon: "✉️", type: "contact" },
+    { id: "recycle-bin", title: "Recycle Bin", icon: "🗑️", type: "recycle-bin" },
+];
 
   const handleAdminClick = () => {
     if (isAdmin) {
